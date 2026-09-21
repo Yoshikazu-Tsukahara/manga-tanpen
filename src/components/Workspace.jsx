@@ -115,10 +115,10 @@ export default function Workspace({
         </div>
       </div>
 
-      <p className="px-1 pt-3 font-serif text-[11px] leading-relaxed text-[#8a7a64]">
+      <p className="px-1 pt-3 font-serif text-[10px] leading-relaxed text-[#8a7a64] sm:text-[11px]">
         推奨は縦長 9:16（1080×1920 前後）。1コマにつき1枚。端は切れるので、重要な絵は中央へ。
       </p>
-      <div className="flex items-center gap-3 px-1 pt-2 text-[11px] text-[#6b5d4d]">
+      <div className="flex min-w-0 items-center gap-2 px-1 pt-2 text-[11px] text-[#6b5d4d] sm:gap-3">
         <span className="shrink-0 font-serif">表示倍率</span>
         <button
           type="button"

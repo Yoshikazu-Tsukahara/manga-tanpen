@@ -70,7 +70,7 @@ export default function VideoPreview({
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-[320px] px-2">
+    <div className="phone-preview relative mx-auto px-2">
       <div className="relative">
         {/* 消音・音量・電源。紙の上でも輪郭が残るよう少し厚めに */}
         <div

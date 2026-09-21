@@ -193,7 +193,7 @@ export default function App() {
   }
 
   return (
-    <div className={`paper flex h-full flex-col text-[#3d3228] ${isExporting ? 'pointer-events-none' : ''}`}>
+    <div className={`paper flex min-h-dvh flex-col overflow-x-hidden text-[#3d3228] desk:h-dvh desk:overflow-hidden ${isExporting ? 'pointer-events-none' : ''}`}>
       <input
         ref={fileInputRef}
         type="file"
@@ -202,11 +202,11 @@ export default function App() {
         onChange={handleFileChange}
       />
 
-      <header className="flex items-end justify-between px-8 pt-6 pb-2">
-        <h1 className="font-serif text-xl tracking-[0.18em] text-[#3d3228]">
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-2 sm:px-8">
+        <h1 className="font-serif text-lg tracking-[0.14em] text-[#3d3228] sm:text-xl sm:tracking-[0.18em]">
           漫画 <span className="text-[#c45c4a]">/</span> 短編
         </h1>
-        <div className="flex items-baseline gap-4 font-serif text-sm">
+        <div className="flex items-baseline gap-3 font-serif text-sm sm:gap-4">
           {Array.from({ length: MAX_PANELS - MIN_PANELS + 1 }, (_, i) => MIN_PANELS + i).map((count) => (
             <button
               key={count}
@@ -228,8 +228,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-10 px-8 pb-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
-        <section className="flex min-h-0 flex-col">
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-8 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 split:grid-cols-[minmax(0,1fr)_minmax(0,min(380px,42vw))] split:gap-8 desk:min-h-0 desk:grid-cols-[minmax(0,1fr)_minmax(0,min(420px,38vw))] desk:gap-10 desk:overflow-hidden">
+        <section className="flex h-[min(62svh,560px)] min-h-[260px] flex-col split:h-[min(calc(100dvh-5.5rem),680px)] desk:h-auto desk:min-h-0 desk:flex-1">
           <Workspace
             layout={layout}
             panels={visiblePanels}
@@ -243,7 +243,7 @@ export default function App() {
           />
         </section>
 
-        <aside className="no-scrollbar flex min-h-0 flex-col justify-center gap-6 overflow-y-auto px-2">
+        <aside className="no-scrollbar flex min-h-0 flex-col justify-start gap-5 overflow-visible px-1 sm:px-2 split:justify-start split:overflow-y-auto desk:justify-center">
           <div className="mx-auto w-full max-w-[300px] space-y-2">
             <button
               type="button"

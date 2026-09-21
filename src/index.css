@@ -1,9 +1,37 @@
 @import 'tailwindcss';
 
+/* ある程度の幅があれば2列。高さまで足りるときだけ画面内に収める */
+@custom-variant split {
+  @media (min-width: 720px) {
+    @slot;
+  }
+}
+
+@custom-variant desk {
+  @media (min-width: 1024px) and (min-height: 700px) {
+    @slot;
+  }
+}
+
 html,
 body,
 #root {
+  min-height: 100dvh;
   height: 100%;
+}
+
+/* 縦長・低い画面ではページ全体をスクロールできるようにする */
+@media (max-width: 1023px), (max-height: 699px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100dvh;
+  }
+}
+
+body {
+  overflow-x: hidden;
 }
 
 /* 紙面の雰囲気を壊さないよう、スクロールバーは出さない（ホイール／スワイプは有効） */
@@ -94,4 +122,9 @@ input[type='range']::-moz-range-thumb {
   border: none;
   border-radius: 999px;
   background: #3d3228;
+}
+
+/* プレビューの端末。幅にも高さにも収まるよう、縦長画面では少し小さくする */
+.phone-preview {
+  width: min(20rem, 100%, calc(9 / 16 * 58svh));
 }
