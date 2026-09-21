@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* 紙面の雰囲気を壊さないよう、スクロールバーは出さない（ホイール／スワイプは有効） */
+html,
+body,
+.paper,
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.paper::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  color: #3d3228;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP',
+    sans-serif;
+}
+
+/* 原稿用紙のようなクリーム色。ごく弱い繊維感を重ねて、白いカードに見えないようにする */
+.paper {
+  background-color: #f7f1e4;
+  background-image:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.28), transparent 36%),
+    radial-gradient(circle at 88% 92%, rgba(180, 150, 110, 0.08), transparent 42%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(120, 90, 50, 0.015) 2px,
+      rgba(120, 90, 50, 0.015) 3px
+    );
+}
+
+.font-serif {
+  font-family:
+    'Hiragino Mincho ProN',
+    'Yu Mincho',
+    'YuMincho',
+    'Noto Serif JP',
+    serif;
+}
+
+/* 紙に引いた鉛筆の線のようなスライダー */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 1px;
+  background: #8a7a64;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -5.5px;
+  border-radius: 999px;
+  background: #3d3228;
+  box-shadow: 0 0 0 3px #f7f1e4;
+}
+
+input[type='range']::-moz-range-track {
+  height: 1px;
+  background: #8a7a64;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 999px;
+  background: #3d3228;
+}
