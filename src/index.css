@@ -20,8 +20,8 @@ body,
   height: 100%;
 }
 
-/* 縦長・低い画面ではページ全体をスクロールできるようにする */
-@media (max-width: 1023px), (max-height: 699px) {
+/* 1列の狭い画面だけ、ページ全体のスクロールを許可する */
+@media (max-width: 719px) {
   html,
   body,
   #root {
