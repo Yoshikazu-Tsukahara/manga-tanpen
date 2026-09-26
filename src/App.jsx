@@ -17,7 +17,7 @@ import {
   createLayout,
 } from './layout'
 import { buildTimeline, progressAtTime } from './timeline'
-import { exportVideo } from './exportVideo'
+import { FORMAT_OPTIONS, exportVideo } from './exportVideo'
 
 /** 画像が未設定のときに表示する、スクリーントーン風のダミーコマ */
 const INITIAL_PANELS = [
@@ -40,6 +40,7 @@ export default function App() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
   const [exportKind, setExportKind] = useState('full')
+  const [format, setFormat] = useState('webm')
   const [exportProgress, setExportProgress] = useState(0)
   const [exportError, setExportError] = useState('')
   // ?promo=1 のときだけ、紹介画像用のデモコマを読み込む
@@ -205,6 +206,7 @@ export default function App() {
         layout,
         timeline,
         preset: kind,
+        format,
         onProgress: (ratio) => {
           setExportProgress(ratio)
           setTime(ratio * timeline.total)
@@ -295,6 +297,23 @@ export default function App() {
 
         <aside className="no-scrollbar flex min-h-0 min-w-0 flex-col justify-start gap-5 overflow-y-auto px-1 sm:px-2 max-[719px]:overflow-visible desk:justify-center">
           <div className="mx-auto w-full max-w-[300px] space-y-2">
+            <div className="flex items-baseline justify-center gap-3 font-serif text-sm">
+              <span className="text-[11px] tracking-wide text-[#8a7a64]">形式</span>
+              {FORMAT_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setFormat(option.id)}
+                  className={
+                    format === option.id
+                      ? 'text-[#3d3228] underline decoration-[#3d3228] underline-offset-4'
+                      : 'text-[#8a7a64] hover:text-[#3d3228]'
+                  }
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               onClick={() => handleExport('full')}

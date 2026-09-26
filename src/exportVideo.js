@@ -19,16 +19,32 @@ const snsBitsPerSecond = (durationSec) => {
   return Math.round(Math.min(4_000_000, Math.max(400_000, fromSize)))
 }
 
-const pickMime = () => {
-  const candidates = [
+/** 書き出せるファイル形式。MP4 は SNS で再生しやすい H.264 を優先する */
+export const FORMAT_OPTIONS = [
+  { id: 'webm', label: '.webm' },
+  { id: 'mp4', label: '.mp4' },
+]
+
+const MIME_CANDIDATES = {
+  webm: [
     // VP8 は VP9 より軽いので、実時間録画でもフレームが落ちにくい
     'video/webm;codecs=vp8',
     'video/webm;codecs=vp9',
     'video/webm',
+  ],
+  mp4: [
+    'video/mp4;codecs=avc1.42E01E',
+    'video/mp4;codecs=avc1.4D401E',
+    'video/mp4;codecs=avc1',
     'video/mp4',
-  ]
-  return candidates.find((type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) || ''
+  ],
 }
+
+const supportsMime = (type) =>
+  typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)
+
+export const pickMime = (format = 'webm') =>
+  (MIME_CANDIDATES[format] || MIME_CANDIDATES.webm).find((type) => supportsMime(type)) || ''
 
 const loadImage = (src) =>
   new Promise((resolve, reject) => {
@@ -153,12 +169,12 @@ const downloadBlob = (blob, filename) => {
 const pad2 = (value) => String(value).padStart(2, '0')
 
 /** 画面の「漫画 / 短編」に寄せた、保存用のファイル名 */
-const exportFilename = (extension, panelCount, preset, aspectId) => {
+const exportFilename = (format, panelCount, preset, aspectId) => {
   const now = new Date()
   const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}`
   const kind = preset === 'sns' ? 'SNS_' : ''
   const ratio = aspectId === '3:4' ? '3x4_' : ''
-  return `漫画短編_${kind}${ratio}${panelCount}コマ_${stamp}.${extension}`
+  return `漫画短編_${kind}${ratio}${panelCount}コマ_${stamp}.${format === 'mp4' ? 'mp4' : 'webm'}`
 }
 
 const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)))
@@ -173,14 +189,18 @@ const waitUntil = async (timestamp) => {
  * 現在の台本どおりに動画を書き出し、自動ダウンロードする。
  * preset が sns のときは 720×1280・30fps で 5MB 未満を狙う。映像はコマ枠が 3:4 でも 9:16。
  */
-export async function exportVideo({ panels, layout, timeline, onProgress, preset = 'full' }) {
+export async function exportVideo({ panels, layout, timeline, onProgress, preset = 'full', format = 'webm' }) {
   if (typeof MediaRecorder === 'undefined') {
     throw new Error('このブラウザは動画の書き出しに対応していません')
   }
 
-  const mimeType = pickMime()
+  const mimeType = pickMime(format)
   if (!mimeType) {
-    throw new Error('対応する録画形式が見つかりませんでした')
+    throw new Error(
+      format === 'mp4'
+        ? 'このブラウザは MP4 の書き出しに対応していません'
+        : '対応する録画形式が見つかりませんでした',
+    )
   }
 
   const images = await Promise.all(panels.map((panel) => (panel.src ? loadImage(panel.src) : null)))
@@ -274,8 +294,7 @@ export async function exportVideo({ panels, layout, timeline, onProgress, preset
       throw new Error('動画データの生成に失敗しました')
     }
 
-    const extension = mimeType.includes('mp4') ? 'mp4' : 'webm'
-    downloadBlob(blob, exportFilename(extension, layout.panelCount, preset, layout.aspectId))
+    downloadBlob(blob, exportFilename(format, layout.panelCount, preset, layout.aspectId))
   } finally {
     stream.getTracks().forEach((mediaTrack) => mediaTrack.stop())
     canvas.remove()
