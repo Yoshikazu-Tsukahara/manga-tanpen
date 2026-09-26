@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Workspace from './components/Workspace'
 import VideoPreview from './components/VideoPreview'
 import {
+  ASPECT_OPTIONS,
+  DEFAULT_ASPECT,
   DEFAULT_GAP,
   DEFAULT_INSET,
   DEFAULT_PANELS,
@@ -34,12 +36,19 @@ export default function App() {
   const [inset, setInset] = useState(DEFAULT_INSET) // カメラ内の片側余白（0でぴったり）
   const [gap, setGap] = useState(DEFAULT_GAP) // コマとコマの間隔
   const [panelCount, setPanelCount] = useState(DEFAULT_PANELS)
+  const [aspectId, setAspectId] = useState(DEFAULT_ASPECT)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
+  const [exportKind, setExportKind] = useState('full')
   const [exportProgress, setExportProgress] = useState(0)
   const [exportError, setExportError] = useState('')
+  // ?promo=1 のときだけ、紹介画像用のデモコマを読み込む
+  const isPromo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('promo')
 
-  const layout = useMemo(() => createLayout(inset, gap, panelCount), [inset, gap, panelCount])
+  const layout = useMemo(
+    () => createLayout(inset, gap, panelCount, aspectId),
+    [inset, gap, panelCount, aspectId],
+  )
   const visiblePanels = useMemo(() => panels.slice(0, panelCount), [panels, panelCount])
 
   // 「台本」。停留と移動を並べたもので、時間 → カメラ位置 の変換表になる
@@ -159,6 +168,21 @@ export default function App() {
     setPanels((prev) => prev.map((panel, i) => (i === index ? { ...panel, ...patch } : panel)))
   }
 
+  // プロモ撮影用。通常の利用ではダミーのまま
+  useEffect(() => {
+    if (!isPromo) return undefined
+    setPanels((prev) =>
+      prev.map((panel, index) => ({
+        ...panel,
+        src: `/demo/${index + 1}.jpg`,
+        x: 50,
+        y: 50,
+        scale: 1,
+      })),
+    )
+    return undefined
+  }, [isPromo])
+
   const progress = progressAtTime(timeline, time)
 
   const seek = (value) => {
@@ -167,11 +191,12 @@ export default function App() {
     setTime(value)
   }
 
-  const handleExport = async () => {
+  const handleExport = async (kind = 'full') => {
     if (isExporting) return
     setIsPlaying(false)
     setExportError('')
     setExportProgress(0)
+    setExportKind(kind)
     setIsExporting(true)
 
     try {
@@ -179,6 +204,7 @@ export default function App() {
         panels: visiblePanels,
         layout,
         timeline,
+        preset: kind,
         onProgress: (ratio) => {
           setExportProgress(ratio)
           setTime(ratio * timeline.total)
@@ -193,7 +219,7 @@ export default function App() {
   }
 
   return (
-    <div className={`paper flex h-dvh flex-col overflow-hidden text-[#3d3228] max-[719px]:h-auto max-[719px]:min-h-dvh max-[719px]:overflow-x-hidden ${isExporting ? 'pointer-events-none' : ''}`}>
+    <div className={`paper flex h-dvh flex-col overflow-hidden text-[#3d3228] max-[719px]:h-auto max-[719px]:min-h-dvh max-[719px]:overflow-x-hidden ${isPromo ? 'promo-shot' : ''} ${isExporting ? 'pointer-events-none' : ''}`}>
       <input
         ref={fileInputRef}
         type="file"
@@ -206,7 +232,29 @@ export default function App() {
         <h1 className="font-serif text-lg tracking-[0.14em] text-[#3d3228] sm:text-xl sm:tracking-[0.18em]">
           漫画 <span className="text-[#c45c4a]">/</span> 短編
         </h1>
-        <div className="flex items-baseline gap-3 font-serif text-sm sm:gap-4">
+        <div className="flex flex-wrap items-baseline justify-end gap-x-5 gap-y-2">
+          <div className="flex items-baseline gap-3 font-serif text-sm">
+            <span className="text-[11px] tracking-wide text-[#8a7a64]">コマ枠</span>
+            {ASPECT_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => {
+                  setAspectId(option.id)
+                  setIsPlaying(false)
+                  setTime(0)
+                }}
+                className={
+                  aspectId === option.id
+                    ? 'text-[#3d3228] underline decoration-[#3d3228] underline-offset-4'
+                    : 'text-[#8a7a64] hover:text-[#3d3228]'
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-baseline gap-3 font-serif text-sm sm:gap-4">
           {Array.from({ length: MAX_PANELS - MIN_PANELS + 1 }, (_, i) => MIN_PANELS + i).map((count) => (
             <button
               key={count}
@@ -225,6 +273,7 @@ export default function App() {
               {count}コマ
             </button>
           ))}
+          </div>
         </div>
       </header>
 
@@ -235,11 +284,12 @@ export default function App() {
             panels={visiblePanels}
             progress={progress}
             isPlaying={isPlaying}
-            selectedIndex={selectedIndex}
+            selectedIndex={isPromo ? -1 : selectedIndex}
             onPickImage={openPicker}
             onClearImage={clearImage}
             onSelectPanel={setSelectedIndex}
             onImageTransform={updateImage}
+            hideHints={isPromo}
           />
         </section>
 
@@ -247,15 +297,25 @@ export default function App() {
           <div className="mx-auto w-full max-w-[300px] space-y-2">
             <button
               type="button"
-              onClick={handleExport}
+              onClick={() => handleExport('full')}
               disabled={isExporting}
               className="pointer-events-auto w-full rounded-sm border border-[#3d3228]/18 bg-[#f3ece0] py-2.5 font-serif text-sm tracking-wide text-[#3d3228] shadow-[0_1px_0_rgba(61,50,40,0.08)] transition hover:border-[#3d3228]/35 hover:bg-[#ece4d2] disabled:border-[#c4b8a5]/40 disabled:bg-[#f3ece0] disabled:text-[#8a7a64]"
             >
-              {isExporting
+              {isExporting && exportKind === 'full'
                 ? `生成中... (${Math.round(exportProgress * 100)}%)`
                 : '動画を書き出す（エクスポート）'}
             </button>
-            <p className="text-center font-serif text-[10px] leading-relaxed text-[#8a7a64]">
+            <button
+              type="button"
+              onClick={() => handleExport('sns')}
+              disabled={isExporting}
+              className="pointer-events-auto w-full rounded-sm border border-[#3d3228]/12 bg-transparent py-2 font-serif text-[12px] tracking-wide text-[#6b5d4d] transition hover:border-[#3d3228]/30 hover:text-[#3d3228] disabled:border-[#c4b8a5]/30 disabled:text-[#8a7a64]"
+            >
+              {isExporting && exportKind === 'sns'
+                ? `生成中... (${Math.round(exportProgress * 100)}%)`
+                : 'SNS用に書き出す（5MB以下）'}
+            </button>
+            <p className="promo-hide text-center font-serif text-[10px] leading-relaxed text-[#8a7a64]">
               {isExporting
                 ? 'このタブを開いたままお待ちください'
                 : '生成中はタブを閉じたり、別のタブへ移らないでください'}

@@ -1,8 +1,9 @@
 /**
  * 漫画ページとカメラフレームのサイズを決める「設計図」。
  *
- * 余白（inset）は 0 ならコマが 9:16 画面にぴったり収まり、
- * 大きくするほどカメラの内側に紙色が見える。
+ * 映像（カメラ）はいつも 9:16。変わるのはコマ枠の縦横だけ。
+ * 3:4 のコマは 9:16 より高さが低いので、カメラ内の上下の余白が大きくなる。
+ * 余白（inset）は左右のすき間。0 ならコマ幅が画面いっぱい。
  */
 
 export const MIN_PANELS = 2
@@ -10,6 +11,17 @@ export const MAX_PANELS = 4
 export const DEFAULT_PANELS = 4
 export const PANEL_COUNT = DEFAULT_PANELS
 export const CANVAS_W = 1080
+
+/** コマ枠の縦横。ratio は高さ ÷ 幅。映像の 9:16 とは別 */
+export const ASPECT_OPTIONS = [
+  { id: '9:16', label: '9:16', ratio: 16 / 9 },
+  { id: '3:4', label: '3:4', ratio: 4 / 3 },
+]
+export const DEFAULT_ASPECT = '9:16'
+
+const aspectById = (id) => ASPECT_OPTIONS.find((item) => item.id === id) || ASPECT_OPTIONS[0]
+
+/** 書き出す映像はいつもこのサイズ */
 export const CAMERA_H = (CANVAS_W * 16) / 9
 export const CAMERA_RATIO = CAMERA_H / CANVAS_W
 
@@ -25,15 +37,22 @@ export const DEFAULT_GAP = 0.09
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
-export function createLayout(inset = DEFAULT_INSET, gapRatio = DEFAULT_GAP, panelCount = DEFAULT_PANELS) {
+export function createLayout(
+  inset = DEFAULT_INSET,
+  gapRatio = DEFAULT_GAP,
+  panelCount = DEFAULT_PANELS,
+  aspectId = DEFAULT_ASPECT,
+) {
   const safe = clamp(inset, MIN_INSET, MAX_INSET)
   const gapSafe = clamp(gapRatio, MIN_GAP, MAX_GAP)
   const count = clamp(Math.round(panelCount), MIN_PANELS, MAX_PANELS)
+  const aspect = aspectById(aspectId)
   const panelWidthRatio = 1 - safe * 2
 
   const PANEL_W = CANVAS_W * panelWidthRatio
-  const PANEL_H = PANEL_W * (16 / 9)
+  const PANEL_H = PANEL_W * aspect.ratio
   const H_INSET = (CANVAS_W - PANEL_W) / 2
+  // 3:4 のコマはカメラより低いので、ここが 9:16 のときより大きくなる
   const V_INSET = (CAMERA_H - PANEL_H) / 2
   const GAP = CANVAS_W * gapSafe
   const PAGE_PAD = V_INSET
@@ -52,6 +71,13 @@ export function createLayout(inset = DEFAULT_INSET, gapRatio = DEFAULT_GAP, pane
   return {
     inset: safe,
     panelCount: count,
+    aspectId: aspect.id,
+    aspectLabel: aspect.label,
+    FRAME_W: CANVAS_W,
+    FRAME_H: CANVAS_W * aspect.ratio,
+    CAMERA_W: CANVAS_W,
+    CAMERA_H,
+    CAMERA_RATIO,
     PANEL_W,
     PANEL_H,
     H_INSET,

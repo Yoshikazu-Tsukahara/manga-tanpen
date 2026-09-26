@@ -102,10 +102,7 @@ export default function VideoPreview({
         >
           {/* 内側：黒いフロントガラス。ここが「iPhone」の輪郭になる */}
           <div className="rounded-[2.28rem] bg-[#111113] p-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-            <div
-              className="relative overflow-hidden rounded-[2.12rem] bg-[#f7f1e4]"
-              style={{ aspectRatio: '9 / 16' }}
-            >
+            <div className="relative overflow-hidden rounded-[2.12rem] bg-[#f7f1e4]" style={{ aspectRatio: '9 / 16' }}>
               <div
                 className="absolute top-0 left-0 w-full will-change-transform"
                 style={{ transform: `translateY(${-progress * layout.MAX_SCROLL_PCT}%)` }}

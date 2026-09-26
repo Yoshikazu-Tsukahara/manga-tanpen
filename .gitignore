@@ -24,3 +24,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# プロモ撮影用のデモ画像（本番アプリには載せない）
+public/demo/
+promo/panels/
+promo/shots/

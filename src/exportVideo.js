@@ -1,10 +1,23 @@
-import { CAMERA_H, CANVAS_W } from './layout'
+import { CANVAS_W } from './layout'
 import { progressAtTime } from './timeline'
 
 const PAPER = '#f7f1e4'
 const INK = '#1e293b'
-const FPS = 60
-const FRAME_MS = 1000 / FPS
+const FULL_FPS = 60
+const SNS_FPS = 30
+/** SNS向けの出力。映像はいつも 9:16 なので 720×1280 */
+const SNS_W = 720
+const SNS_H = 1280
+
+/**
+ * 仕上がりがおおよそ 5MB を超えないように、動画の長さからビットレートを決める。
+ * エンコーダは指定より少し大きくなることがあるので、目標は 3.6MB に余白を残す。
+ */
+const snsBitsPerSecond = (durationSec) => {
+  const targetBytes = 3.6 * 1024 * 1024
+  const fromSize = (targetBytes * 8) / Math.max(durationSec, 0.5)
+  return Math.round(Math.min(4_000_000, Math.max(400_000, fromSize)))
+}
 
 const pickMime = () => {
   const candidates = [
@@ -114,7 +127,7 @@ const drawExportFrame = (ctx, page, layout, progress, prevProgress = progress) =
   const samples = travel < 1.5 ? 1 : Math.min(8, Math.max(3, Math.round(travel / 28)))
 
   ctx.fillStyle = PAPER
-  ctx.fillRect(0, 0, CANVAS_W, CAMERA_H)
+  ctx.fillRect(0, 0, layout.CAMERA_W, layout.CAMERA_H)
 
   for (let s = 0; s < samples; s += 1) {
     const t = samples === 1 ? 1 : s / (samples - 1)
@@ -140,10 +153,12 @@ const downloadBlob = (blob, filename) => {
 const pad2 = (value) => String(value).padStart(2, '0')
 
 /** 画面の「漫画 / 短編」に寄せた、保存用のファイル名 */
-const exportFilename = (extension, panelCount) => {
+const exportFilename = (extension, panelCount, preset, aspectId) => {
   const now = new Date()
   const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}`
-  return `漫画短編_${panelCount}コマ_${stamp}.${extension}`
+  const kind = preset === 'sns' ? 'SNS_' : ''
+  const ratio = aspectId === '3:4' ? '3x4_' : ''
+  return `漫画短編_${kind}${ratio}${panelCount}コマ_${stamp}.${extension}`
 }
 
 const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)))
@@ -155,9 +170,10 @@ const waitUntil = async (timestamp) => {
 }
 
 /**
- * 現在の台本どおりに 9:16 動画を書き出し、自動ダウンロードする。
+ * 現在の台本どおりに動画を書き出し、自動ダウンロードする。
+ * preset が sns のときは 720×1280・30fps で 5MB 未満を狙う。映像はコマ枠が 3:4 でも 9:16。
  */
-export async function exportVideo({ panels, layout, timeline, onProgress }) {
+export async function exportVideo({ panels, layout, timeline, onProgress, preset = 'full' }) {
   if (typeof MediaRecorder === 'undefined') {
     throw new Error('このブラウザは動画の書き出しに対応していません')
   }
@@ -170,22 +186,30 @@ export async function exportVideo({ panels, layout, timeline, onProgress }) {
   const images = await Promise.all(panels.map((panel) => (panel.src ? loadImage(panel.src) : null)))
   const page = prerenderPage(panels, images, layout)
 
+  const sns = preset === 'sns'
+  const fps = sns ? SNS_FPS : FULL_FPS
+  const frameMs = 1000 / fps
+  const outW = sns ? SNS_W : layout.CAMERA_W
+  const outH = sns ? SNS_H : layout.CAMERA_H
+
   const canvas = document.createElement('canvas')
-  canvas.width = CANVAS_W
-  canvas.height = CAMERA_H
-  canvas.style.cssText = 'position:fixed;left:-9999px;top:0;width:1080px;height:1920px;pointer-events:none;'
+  canvas.width = outW
+  canvas.height = outH
+  canvas.style.cssText = `position:fixed;left:-9999px;top:0;width:${outW}px;height:${outH}px;pointer-events:none;`
   document.body.appendChild(canvas)
 
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
+  // 原稿は 1080 幅のまま描き、SNS のときは出力キャンバス側で縮小する
+  ctx.setTransform(outW / layout.CAMERA_W, 0, 0, outH / layout.CAMERA_H, 0, 0)
 
   // 0 なら「描いたあと自分で1枚送る」手動モード。未対応なら 30fps 自動取り込み
   let stream
   try {
     stream = canvas.captureStream(0)
   } catch {
-    stream = canvas.captureStream(FPS)
+    stream = canvas.captureStream(fps)
   }
   const track = stream.getVideoTracks()[0]
   const pushFrame = () => {
@@ -193,7 +217,8 @@ export async function exportVideo({ panels, layout, timeline, onProgress }) {
   }
 
   const chunks = []
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 10_000_000 })
+  const videoBitsPerSecond = sns ? snsBitsPerSecond(timeline.total) : 10_000_000
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond })
 
   recorder.ondataavailable = (event) => {
     if (event.data.size > 0) chunks.push(event.data)
@@ -204,7 +229,7 @@ export async function exportVideo({ panels, layout, timeline, onProgress }) {
     recorder.onerror = () => reject(new Error('録画中にエラーが起きました'))
   })
 
-  const totalFrames = Math.max(1, Math.round(timeline.total * FPS))
+  const totalFrames = Math.max(1, Math.round(timeline.total * fps))
   let lastUi = 0
   const report = (ratio) => {
     const now = performance.now()
@@ -224,7 +249,7 @@ export async function exportVideo({ panels, layout, timeline, onProgress }) {
     let prevProgress = 0
 
     for (let i = 0; i <= totalFrames; i += 1) {
-      const time = Math.min(i / FPS, timeline.total)
+      const time = Math.min(i / fps, timeline.total)
       const progress = i === totalFrames ? 1 : progressAtTime(timeline, time)
 
       drawExportFrame(ctx, page, layout, progress, i === 0 ? progress : prevProgress)
@@ -233,11 +258,11 @@ export async function exportVideo({ panels, layout, timeline, onProgress }) {
       report(i / totalFrames)
 
       if (i === totalFrames) break
-      await waitUntil(started + (i + 1) * FRAME_MS)
+      await waitUntil(started + (i + 1) * frameMs)
     }
 
     // 最後のフレームがエンコーダに乗るまで少し待つ
-    await sleep(FRAME_MS)
+    await sleep(frameMs)
     if (recorder.state === 'recording') {
       recorder.requestData?.()
       recorder.stop()
@@ -250,7 +275,7 @@ export async function exportVideo({ panels, layout, timeline, onProgress }) {
     }
 
     const extension = mimeType.includes('mp4') ? 'mp4' : 'webm'
-    downloadBlob(blob, exportFilename(extension, layout.panelCount))
+    downloadBlob(blob, exportFilename(extension, layout.panelCount, preset, layout.aspectId))
   } finally {
     stream.getTracks().forEach((mediaTrack) => mediaTrack.stop())
     canvas.remove()

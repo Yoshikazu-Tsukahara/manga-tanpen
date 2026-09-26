@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MangaCanvas from './MangaCanvas'
-import { CAMERA_RATIO, clamp } from '../layout'
+import { clamp } from '../layout'
 
 /** 原稿の上下に取る余白（px） */
 const PAD = 8
@@ -24,6 +24,7 @@ export default function Workspace({
   onClearImage,
   onSelectPanel,
   onImageTransform,
+  hideHints = false,
 }) {
   const scrollRef = useRef(null)
 
@@ -41,14 +42,14 @@ export default function Workspace({
 
   const available = Math.max(viewport.height - PAD * 2, 0)
   const fitPageWidth = available / layout.CANVAS_RATIO
-  const fitPanelWidth = available / CAMERA_RATIO
+  const fitPanelWidth = available / layout.CAMERA_RATIO
   const canvasWidth = clamp(
     fitPageWidth + (fitPanelWidth - fitPageWidth) * zoom,
     40,
     Math.max(viewport.width - 24, 40),
   )
   const canvasHeight = canvasWidth * layout.CANVAS_RATIO
-  const frameHeight = canvasWidth * CAMERA_RATIO
+  const frameHeight = canvasWidth * layout.CAMERA_RATIO
 
   useEffect(() => {
     if (!isPlaying) return
@@ -75,7 +76,7 @@ export default function Workspace({
             <MangaCanvas
               layout={layout}
               panels={panels}
-              editable
+              editable={!hideHints}
               showMarkers
               selectedIndex={selectedIndex}
               onPickImage={onPickImage}
@@ -115,9 +116,11 @@ export default function Workspace({
         </div>
       </div>
 
-      <p className="px-1 pt-3 font-serif text-[10px] leading-relaxed text-[#8a7a64] sm:text-[11px]">
-        推奨は縦長 9:16（1080×1920 前後）。1コマにつき1枚。端は切れるので、重要な絵は中央へ。
-      </p>
+      {hideHints ? null : (
+        <p className="px-1 pt-3 font-serif text-[10px] leading-relaxed text-[#8a7a64] sm:text-[11px]">
+          推奨はコマ枠 {layout.aspectLabel}（{layout.FRAME_W}×{Math.round(layout.FRAME_H)} 前後）。1コマにつき1枚。端は切れるので、重要な絵は中央へ。
+        </p>
+      )}
       <div className="flex min-w-0 items-center gap-2 px-1 pt-2 text-[11px] text-[#6b5d4d] sm:gap-3">
         <span className="shrink-0 font-serif">表示倍率</span>
         <button

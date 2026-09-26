@@ -124,7 +124,12 @@ input[type='range']::-moz-range-thumb {
   background: #3d3228;
 }
 
-/* プレビューの端末。幅にも高さにも収まるよう、縦長画面では少し小さくする */
+/* プレビューの端末。画面比が変わっても、この外形サイズは変えない */
 .phone-preview {
   width: min(20rem, 100%, calc(9 / 16 * 58svh));
+}
+
+/* 紹介画像の撮影時だけ、注意書きを隠す */
+.promo-shot .promo-hide {
+  display: none;
 }
